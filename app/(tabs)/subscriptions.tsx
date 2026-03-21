@@ -146,7 +146,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#020617",
-    padding: 16
+    padding: 16,
+	paddingTop: 50
   },
 
   headerCard: {

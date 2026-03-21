@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from "react-native";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import { supabase } from "../../lib/supabase";
-import { Picker } from "@react-native-picker/picker";
 
 const CATEGORY_OPTIONS = [
   "Food",
@@ -20,7 +21,6 @@ const CATEGORY_OPTIONS = [
 export default function Transactions() {
 
   const [transactions, setTransactions] = useState([]);
-  const [editingCategoryId, setEditingCategoryId] = useState(null);
 
   useEffect(() => {
     loadTransactions();
@@ -28,43 +28,15 @@ export default function Transactions() {
 
   async function loadTransactions() {
 
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData?.user;
-
-    const { data: txns } = await supabase
+    const { data } = await supabase
       .from("transactions")
       .select("*")
       .order("created_at", { ascending: false });
 
-    const { data: rules } = await supabase
-      .from("user_merchant_rules")
-      .select("*")
-      .eq("user_id", user.id);
-
-    const ruleMap = {};
-
-    rules?.forEach((r) => {
-      ruleMap[r.merchant.toLowerCase()] = r.category;
-    });
-
-    const updatedTransactions = txns.map((t) => {
-
-      const merchant = t.description?.toLowerCase();
-
-      if (ruleMap[merchant]) {
-        return { ...t, category: ruleMap[merchant] };
-      }
-
-      return t;
-    });
-
-    setTransactions(updatedTransactions || []);
+    setTransactions(data || []);
   }
 
   async function updateCategory(transactionId, newCategory) {
-
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData?.user;
 
     const transaction = transactions.find(t => t.id === transactionId);
 
@@ -72,6 +44,9 @@ export default function Transactions() {
       .from("transactions")
       .update({ category: newCategory })
       .eq("id", transactionId);
+
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
 
     if (transaction?.description && user) {
 
@@ -92,11 +67,111 @@ export default function Transactions() {
         t.id === transactionId ? { ...t, category: newCategory } : t
       )
     );
-
-    setEditingCategoryId(null);
   }
 
-  function renderTransaction(item) {
+  function openCategorySelector(transactionId) {
+
+    const options = CATEGORY_OPTIONS.map(cat => ({
+      text: cat,
+      onPress: () => updateCategory(transactionId, cat)
+    }));
+
+    options.push({ text: "Cancel", style: "cancel" });
+
+    Alert.alert("Select Category", "", options);
+  }
+
+  async function downloadOlderTransactions() {
+
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    const older = transactions.filter(t => {
+
+      const d = new Date(t.created_at);
+
+      return (
+        d.toDateString() !== today.toDateString() &&
+        d.toDateString() !== yesterday.toDateString()
+      );
+
+    });
+
+    if (older.length === 0) {
+      Alert.alert("No older transactions available");
+      return;
+    }
+
+    const header = "Date,Merchant,Amount,Type,Category\n";
+
+    const rows = older
+      .map(
+        (t) =>
+          `${t.created_at},${t.description},${t.amount},${t.type},${t.category}`
+      )
+      .join("\n");
+
+    const csv = header + rows;
+
+    const fileUri = FileSystem.documentDirectory + "transactions.csv";
+
+    await FileSystem.writeAsStringAsync(fileUri, csv, {
+      encoding: FileSystem.EncodingType.UTF8
+    });
+
+    await Sharing.shareAsync(fileUri);
+  }
+
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  const todayTx = transactions.filter(
+    t => new Date(t.created_at).toDateString() === today.toDateString()
+  );
+
+  const yesterdayTx = transactions.filter(
+    t => new Date(t.created_at).toDateString() === yesterday.toDateString()
+  );
+
+const combined = transactions.map(t => {
+
+  const d = new Date(t.created_at);
+
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  let label;
+
+  if (d.toDateString() === today.toDateString()) {
+    label = "Today";
+  }
+  else if (d.toDateString() === yesterday.toDateString()) {
+    label = "Yesterday";
+  }
+  else {
+    label = d.toLocaleDateString("en-IN", {
+      month: "short",
+      day: "numeric"
+    });
+  }
+
+  return {
+    ...t,
+    group: label
+  };
+
+});
+combined.sort(
+  (a, b) => new Date(b.created_at) - new Date(a.created_at)
+);
+
+  function renderItem({ item, index }) {
+
+    const showHeader =
+      index === 0 || combined[index - 1].group !== item.group;
 
     const time = new Date(item.created_at).toLocaleTimeString("en-IN", {
       hour: "2-digit",
@@ -106,123 +181,80 @@ export default function Transactions() {
 
     return (
 
-      <View key={item.id} style={styles.card}>
+      <View>
 
-        <View style={styles.left}>
+        {showHeader && (
+          <Text style={styles.dateHeader}>
+            {item.group}
+          </Text>
+        )}
 
-          <View style={styles.icon}>
-            <Text>💳</Text>
-          </View>
+        <View style={styles.card}>
 
-          <View>
+          <View style={styles.left}>
 
-            <Text style={styles.merchant}>
-              {item.description}
-            </Text>
+            <View style={styles.icon}>
+              <Text>💳</Text>
+            </View>
 
-            <View style={styles.tags}>
+            <View>
 
-              {editingCategoryId === item.id ? (
+              <Text style={styles.merchant}>
+                {item.description}
+              </Text>
 
-                <Picker
-                  selectedValue={item.category}
-                  style={{ width: 150, color: "white" }}
-                  dropdownIconColor="white"
-                  onValueChange={(value) =>
-                    updateCategory(item.id, value)
-                  }
-                >
-                  {CATEGORY_OPTIONS.map(cat => (
-                    <Picker.Item key={cat} label={cat} value={cat} />
-                  ))}
-                </Picker>
-
-              ) : (
+              <View style={styles.tags}>
 
                 <TouchableOpacity
-                  onPress={() => setEditingCategoryId(item.id)}
+                  onPress={() => openCategorySelector(item.id)}
                 >
                   <Text style={styles.category}>
                     {item.category || item.type}
                   </Text>
                 </TouchableOpacity>
 
-              )}
+                <Text style={styles.completed}>
+                  completed
+                </Text>
 
-              <Text style={styles.completed}>
-                completed
-              </Text>
+              </View>
 
             </View>
 
           </View>
 
-        </View>
+          <View style={styles.right}>
 
-        <View style={styles.right}>
+            <Text
+              style={[
+                styles.amount,
+                item.type === "debit"
+                  ? styles.debit
+                  : styles.credit
+              ]}
+            >
+              {item.type === "debit" ? "-" : "+"}₹{item.amount}
+            </Text>
 
-          <Text
-            style={[
-              styles.amount,
-              item.type === "debit"
-                ? styles.debit
-                : styles.credit
-            ]}
-          >
-            {item.type === "debit" ? "-" : "+"}₹{item.amount}
-          </Text>
+            <Text style={styles.time}>
+              {time}
+            </Text>
 
-          <Text style={styles.time}>
-            {time}
-          </Text>
+          </View>
 
         </View>
 
       </View>
-
     );
   }
 
-  const sortedTransactions = [...transactions]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  function renderHeader() {
 
-  const groups = {};
+    return (
 
-  sortedTransactions.forEach((t) => {
+      <View style={styles.categoryGrid}>
 
-    const d = new Date(t.created_at);
-
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
-
-    let label;
-
-    if (d.toDateString() === today.toDateString()) {
-      label = "Today";
-    } else if (d.toDateString() === yesterday.toDateString()) {
-      label = "Yesterday";
-    } else {
-      label = d.toLocaleDateString("en-IN", {
-        month: "short",
-        day: "numeric"
-      });
-    }
-
-    if (!groups[label]) groups[label] = [];
-    groups[label].push(t);
-
-  });
-
-  return (
-
-    <ScrollView style={styles.container}>
-
-      {/* CATEGORY SUMMARY */}
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-
-        {CATEGORY_OPTIONS.map((cat, index) => {
+        {CATEGORY_OPTIONS.slice(0, 8).map((cat, index) => {
 
           const count = transactions.filter(
             (t) => t.category === cat
@@ -236,8 +268,7 @@ export default function Transactions() {
             "#22c55e",
             "#6366f1",
             "#ec4899",
-            "#a855f7",
-            "#10b981"
+            "#a855f7"
           ];
 
           return (
@@ -246,7 +277,7 @@ export default function Transactions() {
               key={cat}
               style={[
                 styles.categoryCard,
-                { backgroundColor: colors[index % colors.length] }
+                { backgroundColor: colors[index] }
               ]}
             >
 
@@ -264,25 +295,32 @@ export default function Transactions() {
 
         })}
 
-      </ScrollView>
+      </View>
 
-      {/* GROUPED TRANSACTIONS */}
+    );
+  }
 
-      {Object.entries(groups).map(([label, txns]) => (
+  return (
 
-        <View key={label}>
+    <View style={styles.container}>
 
-          <Text style={styles.dateHeader}>
-            {label}
-          </Text>
+      <FlatList
+        data={combined}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderItem}
+        ListHeaderComponent={renderHeader}
+      />
 
-          {txns.map((t) => renderTransaction(t))}
+      <TouchableOpacity
+        style={styles.downloadBtn}
+        onPress={downloadOlderTransactions}
+      >
+        <Text style={{ color: "white", fontWeight: "600" }}>
+          Download older transactions
+        </Text>
+      </TouchableOpacity>
 
-        </View>
-
-      ))}
-
-    </ScrollView>
+    </View>
 
   );
 }
@@ -293,6 +331,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#020617",
     padding: 16,
+    paddingTop: 50
   },
 
   dateHeader: {
@@ -300,6 +339,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 10,
     marginBottom: 4
+  },
+
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 16
+  },
+
+  categoryCard: {
+    width: "23%",
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
+    alignItems: "center"
+  },
+
+  categoryName: {
+    color: "white",
+    fontSize: 11
+  },
+
+  categoryCount: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600"
   },
 
   card: {
@@ -380,23 +445,12 @@ const styles = StyleSheet.create({
     color: "#94a3b8"
   },
 
-  categoryCard: {
-    minWidth: 90,
-    padding: 10,
+  downloadBtn: {
+    backgroundColor: "#334155",
+    padding: 14,
     borderRadius: 10,
-    marginRight: 8,
+    marginTop: 10,
     alignItems: "center"
-  },
-
-  categoryName: {
-    color: "white",
-    fontSize: 11
-  },
-
-  categoryCount: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600"
   }
 
 });
