@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, AppState, Alert } from "react-native";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { supabase } from "../../lib/supabase";
@@ -22,9 +22,35 @@ export default function Transactions() {
 
   const [transactions, setTransactions] = useState([]);
 
-  useEffect(() => {
-    loadTransactions();
-  }, []);
+useEffect(() => {
+  let interval
+
+  const startPolling = async () => {
+    await loadTransactions()
+    interval = setInterval(() => {
+      loadTransactions()
+    }, 5000)
+  }
+
+  const stopPolling = () => {
+    if (interval) clearInterval(interval)
+  }
+
+  const subscription = AppState.addEventListener("change", state => {
+    if (state === "active") {
+      startPolling()
+    } else {
+      stopPolling()
+    }
+  })
+
+  startPolling()
+
+  return () => {
+    stopPolling()
+    subscription.remove()
+  }
+}, [])
 
   async function loadTransactions() {
 

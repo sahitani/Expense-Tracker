@@ -1,0 +1,65 @@
+[33mcommit 3cb861c1b35f2ef28361913f09af30f35819d1d9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: Your Full Name <your-email@example.com>
+Date:   Sat Mar 21 23:55:44 2026 +0530
+
+    initial commit - expense-tracker working for android
+
+ .gitignore                                         |   5 [32m+[m[31m-[m
+ android/.gitignore                                 |  16 [32m++[m
+ android/app/build.gradle                           | 182 [32m+++++++++++++++[m
+ android/app/debug.keystore                         | Bin [31m0[m -> [32m2257[m bytes
+ android/app/proguard-rules.pro                     |  14 [32m++[m
+ android/app/src/debug/AndroidManifest.xml          |   7 [32m+[m
+ android/app/src/debugOptimized/AndroidManifest.xml |   7 [32m+[m
+ android/app/src/main/AndroidManifest.xml           |  47 [32m++++[m
+ .../spenddashboard/MainActivity.kt                 |  54 [32m+++++[m
+ .../spenddashboard/MainApplication.kt              |  61 [32m+++++[m
+ .../harishsahitani17/spenddashboard/Smsreceiver.kt |  81 [32m+++++++[m
+ .../spenddashboard/UserStorageModule.kt            |  29 [32m+++[m
+ .../spenddashboard/UserStoragePackage.kt           |  15 [32m++[m
+ .../main/res/drawable-hdpi/splashscreen_logo.png   | Bin [31m0[m -> [32m20754[m bytes
+ .../main/res/drawable-mdpi/splashscreen_logo.png   | Bin [31m0[m -> [32m12863[m bytes
+ .../main/res/drawable-xhdpi/splashscreen_logo.png  | Bin [31m0[m -> [32m29081[m bytes
+ .../main/res/drawable-xxhdpi/splashscreen_logo.png | Bin [31m0[m -> [32m47123[m bytes
+ .../res/drawable-xxxhdpi/splashscreen_logo.png     | Bin [31m0[m -> [32m66529[m bytes
+ .../main/res/drawable/ic_launcher_background.xml   |   6 [32m+[m
+ .../main/res/drawable/rn_edit_text_material.xml    |  37 [32m+++[m
+ .../src/main/res/mipmap-anydpi-v26/ic_launcher.xml |   6 [32m+[m
+ .../res/mipmap-anydpi-v26/ic_launcher_round.xml    |   6 [32m+[m
+ .../app/src/main/res/mipmap-hdpi/ic_launcher.webp  | Bin [31m0[m -> [32m3435[m bytes
+ .../res/mipmap-hdpi/ic_launcher_background.webp    | Bin [31m0[m -> [32m5960[m bytes
+ .../res/mipmap-hdpi/ic_launcher_foreground.webp    | Bin [31m0[m -> [32m11190[m bytes
+ .../res/mipmap-hdpi/ic_launcher_monochrome.webp    | Bin [31m0[m -> [32m2139[m bytes
+ .../main/res/mipmap-hdpi/ic_launcher_round.webp    | Bin [31m0[m -> [32m5207[m bytes
+ .../app/src/main/res/mipmap-mdpi/ic_launcher.webp  | Bin [31m0[m -> [32m1844[m bytes
+ .../res/mipmap-mdpi/ic_launcher_background.webp    | Bin [31m0[m -> [32m3411[m bytes
+ .../res/mipmap-mdpi/ic_launcher_foreground.webp    | Bin [31m0[m -> [32m5598[m bytes
+ .../res/mipmap-mdpi/ic_launcher_monochrome.webp    | Bin [31m0[m -> [32m1317[m bytes
+ .../main/res/mipmap-mdpi/ic_launcher_round.webp    | Bin [31m0[m -> [32m3042[m bytes
+ .../app/src/main/res/mipmap-xhdpi/ic_launcher.webp | Bin [31m0[m -> [32m5328[m bytes
+ .../res/mipmap-xhdpi/ic_launcher_background.webp   | Bin [31m0[m -> [32m8772[m bytes
+ .../res/mipmap-xhdpi/ic_launcher_foreground.webp   | Bin [31m0[m -> [32m18945[m bytes
+ .../res/mipmap-xhdpi/ic_launcher_monochrome.webp   | Bin [31m0[m -> [32m2629[m bytes
+ .../main/res/mipmap-xhdpi/ic_launcher_round.webp   | Bin [31m0[m -> [32m7791[m bytes
+ .../src/main/res/mipmap-xxhdpi/ic_launcher.webp    | Bin [31m0[m -> [32m9969[m bytes
+ .../res/mipmap-xxhdpi/ic_launcher_background.webp  | Bin [31m0[m -> [32m15702[m bytes
+ .../res/mipmap-xxhdpi/ic_launcher_foreground.webp  | Bin [31m0[m -> [32m39763[m bytes
+ .../res/mipmap-xxhdpi/ic_launcher_monochrome.webp  | Bin [31m0[m -> [32m5065[m bytes
+ .../main/res/mipmap-xxhdpi/ic_launcher_round.webp  | Bin [31m0[m -> [32m13631[m bytes
+ .../src/main/res/mipmap-xxxhdpi/ic_launcher.webp   | Bin [31m0[m -> [32m15557[m bytes
+ .../res/mipmap-xxxhdpi/ic_launcher_background.webp | Bin [31m0[m -> [32m23353[m bytes
+ .../res/mipmap-xxxhdpi/ic_launcher_foreground.webp | Bin [31m0[m -> [32m67631[m bytes
+ .../res/mipmap-xxxhdpi/ic_launcher_monochrome.webp | Bin [31m0[m -> [32m5325[m bytes
+ .../main/res/mipmap-xxxhdpi/ic_launcher_round.webp | Bin [31m0[m -> [32m20594[m bytes
+ android/app/src/main/res/values-night/colors.xml   |   3 [32m+[m
+ android/app/src/main/res/values/colors.xml         |   6 [32m+[m
+ android/app/src/main/res/values/strings.xml        |   6 [32m+[m
+ android/app/src/main/res/values/styles.xml         |  14 [32m++[m
+ android/build.gradle                               |  24 [32m++[m
+ android/gradle.properties                          |  65 [32m++++++[m
+ android/gradle/wrapper/gradle-wrapper.jar          | Bin [31m0[m -> [32m43764[m bytes
+ android/gradle/wrapper/gradle-wrapper.properties   |   7 [32m+[m
+ android/gradlew                                    | 251 [32m+++++++++++++++++++++[m
+ android/gradlew.bat                                |  94 [32m++++++++[m
+ android/settings.gradle                            |  39 [32m++++[m
+ 58 files changed, 1081 insertions(+), 1 deletion(-)

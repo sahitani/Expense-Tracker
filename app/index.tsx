@@ -6,7 +6,8 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  NativeModules
+  NativeModules,
+  Platform
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
@@ -20,6 +21,7 @@ export default function Index() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState("login");
 
   // 🔥 Auto redirect if already logged in
   useEffect(() => {
@@ -34,6 +36,20 @@ export default function Index() {
 
     checkSession();
   }, []);
+
+  async function persistUserToNative(userId, token) {
+    if (Platform.OS !== "android") return;
+    if (!UserStorage) return;
+    await new Promise((resolve, reject) => {
+      try {
+        UserStorage.saveUserId(userId);
+        UserStorage.saveAccessToken(token);
+        setTimeout(resolve, 100);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
 
   async function login() {
     if (!email || !password) {
@@ -71,15 +87,9 @@ export default function Index() {
       await AsyncStorage.setItem("user_id", userId);
       await AsyncStorage.setItem("access_token", accessToken);
 
-      // Save to native
-      if (UserStorage) {
-        UserStorage.saveUserId(userId);
-        UserStorage.saveAccessToken(accessToken);
-      }
+      // Save to native (awaited before navigating)
+      await persistUserToNative(userId, accessToken);
 
-      Alert.alert("Success", "Login successful");
-
-      // ✅ THIS WAS MISSING
       router.replace("/(tabs)/dashboard");
 
     } catch (e) {
@@ -89,9 +99,50 @@ export default function Index() {
     setLoading(false);
   }
 
+  async function register() {
+    if (!email || !password) {
+      Alert.alert("Error", "Email and password required");
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password
+    });
+
+    setLoading(false);
+
+    if (error) {
+      Alert.alert("Registration failed", error.message);
+      return;
+    }
+
+    Alert.alert("Account created", "Please login.");
+    setMode("login");
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Expense Tracker</Text>
+
+      {/* TOGGLE */}
+      <View style={styles.tabs}>
+        <TouchableOpacity
+          style={[styles.tab, mode === "login" && styles.active]}
+          onPress={() => setMode("login")}
+        >
+          <Text style={styles.tabText}>Login</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, mode === "register" && styles.active]}
+          onPress={() => setMode("register")}
+        >
+          <Text style={styles.tabText}>Register</Text>
+        </TouchableOpacity>
+      </View>
 
       <TextInput
         placeholder="Email"
@@ -99,6 +150,8 @@ export default function Index() {
         value={email}
         onChangeText={setEmail}
         style={styles.input}
+        autoCapitalize="none"
+        keyboardType="email-address"
       />
 
       <TextInput
@@ -112,11 +165,11 @@ export default function Index() {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={login}
+        onPress={mode === "login" ? login : register}
         disabled={loading}
       >
         <Text style={styles.buttonText}>
-          {loading ? "Please wait..." : "Login"}
+          {loading ? "Please wait..." : mode === "login" ? "Login" : "Register"}
         </Text>
       </TouchableOpacity>
     </View>
@@ -136,6 +189,24 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 40,
     textAlign: "center"
+  },
+  tabs: {
+    flexDirection: "row",
+    marginBottom: 20
+  },
+  tab: {
+    flex: 1,
+    padding: 12,
+    backgroundColor: "#1e293b",
+    alignItems: "center",
+    marginRight: 6,
+    borderRadius: 8
+  },
+  active: {
+    backgroundColor: "#3b82f6"
+  },
+  tabText: {
+    color: "white"
   },
   input: {
     backgroundColor: "#0f172a",
